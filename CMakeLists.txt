@@ -13,12 +13,24 @@ FetchContent_Declare(
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
+add_library(inference_core
+        src/tensor_shape.cpp
+        src/tensor.cpp
+        backends/cpu/cpu_ops.cpp)
+target_include_directories(inference_core PUBLIC include)
+
 add_executable(inference main.cpp)
+target_link_libraries(inference PRIVATE inference_core)
 
 enable_testing()
 
-add_executable(simple_test simple_test.cpp)
-target_link_libraries(simple_test PRIVATE GTest::gtest_main)
+
+
+add_executable(tensor_tests tests/tensor_shape_tests.cpp
+        tests/tensor_tests.cpp
+        tests/cpu_ops_tests.cpp)
+target_link_libraries(tensor_tests PRIVATE inference_core GTest::gtest_main)
 
 include(GoogleTest)
-gtest_discover_tests(simple_test)
+
+gtest_discover_tests(tensor_tests)

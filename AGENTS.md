@@ -57,19 +57,32 @@ local GPU backend targets HIP/ROCm.
 
 ## Development Progression
 
-The rough progression is:
+Current progress:
 
-1. Basic tensor and storage abstractions.
-2. CPU tensor operations.
-3. GPU device and memory abstractions.
-4. Simple GPU kernels.
-5. Matrix multiplication.
-6. Optimized/tiled matrix multiplication.
-7. Neural-network operators.
-8. Model/layer representation.
-9. Loading model weights.
-10. Executing a small neural network.
-11. Profiling and optimization.
+- Basic project structure is in place.
+- `TensorShape` exists with tests for rank, element count, scalar shape, empty
+  dimensions, and zero-sized dimensions.
+- `Tensor` exists with immutable shape metadata and owned CPU `float` storage.
+- CPU reference operations exist for elementwise add, ReLU, matrix-vector
+  multiply, and naive matrix multiplication.
+- CPU operation tests cover ordinary cases, scalar tensors, zero-sized
+  dimensions, shape preservation, invalid ranks, incompatible dimensions, and
+  input immutability.
+- CPU operation validation helpers are file-local implementation details, not
+  public API.
+
+The rough remaining progression is:
+
+1. Introduce GPU device and memory abstractions.
+2. Write simple HIP GPU kernels.
+3. Compare HIP operation results against CPU reference operations.
+4. Implement naive GPU matrix multiplication.
+5. Implement optimized/tiled matrix multiplication.
+6. Add neural-network operators.
+7. Add model/layer representation.
+8. Load model weights.
+9. Execute a small neural network.
+10. Profile and optimize.
 
 This progression is provisional. Refine it as the project exposes better
 learning steps or cleaner boundaries.
@@ -94,4 +107,3 @@ learning steps or cleaner boundaries.
 - Keep formatting automated with clang-format.
 - Use clang-tidy once it is available in the local toolchain.
 - Keep generated build directories out of source control.
-
