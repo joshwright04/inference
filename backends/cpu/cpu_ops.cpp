@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cstddef>
 #include <stdexcept>
+#include <thread>
+#include <barrier>
 
 namespace inference {
 namespace {
@@ -93,6 +95,45 @@ namespace {
         }
 
         return result;
+    }
+
+    Tensor add_parallel(const Tensor& a, const Tensor& b, std::size_t thread_count) {
+        if (thread_count == 0) throw std::invalid_argument("Thread count must be at least 1");
+
+        require_same_shape(a, b);
+        const TensorShape shape(a.shape().dims());
+        auto c = Tensor(shape);
+
+        const std::size_t total = c.data().size();
+        if (total == 0) {
+            return c;
+        }
+        const std::size_t chunk_size = (total + thread_count - 1) / thread_count;
+
+        std::vector<std::jthread> threads;
+        threads.reserve(thread_count);
+
+        for (std::size_t thread_index = 0; thread_index < thread_count; ++thread_index) {
+            const std::size_t begin = thread_index * chunk_size;
+            const std::size_t end = std::min(begin + chunk_size, total);
+
+            if (begin >= end) {
+                break;
+            }
+
+            threads.emplace_back([begin, end, &a, &b, &c] {
+                for (std::size_t i = begin; i < end; ++i) {
+                    c[i] = a[i] + b[i];
+                }
+            });
+        }
+
+        for (auto& t : threads) {
+            t.join();
+        }
+
+
+        return c;
     }
 
 }

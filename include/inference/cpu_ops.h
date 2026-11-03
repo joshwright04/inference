@@ -4,6 +4,7 @@
 namespace inference {
     //const reference: avoids expensive copy, but can't modify a and b
     Tensor add(const Tensor& a, const Tensor& b);
+    Tensor add_parallel(const Tensor& a, const Tensor& b, std::size_t thread_count);
 
     Tensor relu(Tensor tensor);
 

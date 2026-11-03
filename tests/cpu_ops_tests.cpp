@@ -55,8 +55,8 @@ namespace inference {
             const auto shape = TensorShape({});
             const Tensor a(shape);
             const Tensor b(shape);
-            const auto data1 = a.data();
-            const auto data2 = b.data();
+            const auto& data1 = a.data();
+            const auto& data2 = b.data();
             const Tensor c = add(a, b);
             EXPECT_EQ(a.data(), data1);
             EXPECT_EQ(b.data(), data2);
@@ -221,10 +221,87 @@ namespace inference {
 
         TEST(CpuOpsTest, MatMulDoesNotModifyInputs) {
             const Tensor a(TensorShape({3, 2}), {7.0F, 8.0F, 9.0F, 10.0F, 11.0F, 12.0F});
-            const std::vector<float> data = a.data();
+            const std::vector<float>& data = a.data();
             const Tensor b(TensorShape({2, 3}));
             const Tensor c = matmul(a, b);
             EXPECT_EQ(a.data(), data);
+        }
+
+        TEST(CpuOpsTest, AddParallelsElementWise) {
+            const auto shape = TensorShape({2, 2});
+            Tensor a(shape, {1.0F, 2.0F, 3.0F, 4.0F});
+            Tensor b(shape, {2.0F, 3.0F, 4.0F, 5.0F});
+
+            const std::vector expected_result = {3.0F, 5.0F, 7.0F, 9.0F};
+
+            EXPECT_EQ(add_parallel(a, b, 2).data(), expected_result);
+        }
+
+        TEST(CpuOpsTest, AddParallelHandlesUnevenChunks) {
+            const Tensor a(TensorShape({5}), {1.0F, -2.0F, 3.0F, -4.0F, 5.0F});
+            const Tensor b(TensorShape({5}), {5.0F, 4.0F, -3.0F, 2.0F, 1.0F});
+
+            const Tensor result = add_parallel(a, b, 4);
+
+            EXPECT_EQ(result.data(), std::vector<float>({6.0F, 2.0F, 0.0F, -2.0F, 6.0F}));
+            EXPECT_EQ(result.shape(), a.shape());
+        }
+
+        TEST(CpuOpsTest, AddParallelHandlesMoreThreadsThanElements) {
+            const Tensor a(TensorShape({2}), {1.0F, -2.0F});
+            const Tensor b(TensorShape({2}), {3.0F, 4.0F});
+
+            EXPECT_EQ(add_parallel(a, b, 4).data(), std::vector<float>({4.0F, 2.0F}));
+        }
+
+        TEST(CpuOpsTest, AddParallelHandlesOneThread) {
+            const Tensor a(TensorShape({3}), {1.0F, -2.0F, 3.0F});
+            const Tensor b(TensorShape({3}), {4.0F, 5.0F, -6.0F});
+
+            EXPECT_EQ(add_parallel(a, b, 1).data(), std::vector<float>({5.0F, 3.0F, -3.0F}));
+        }
+
+        TEST(CpuOpsTest, AddParallelHandlesZeroElementTensors) {
+            const Tensor a(TensorShape({2, 0}));
+            const Tensor b(TensorShape({2, 0}));
+
+            const Tensor result = add_parallel(a, b, 4);
+
+            EXPECT_TRUE(result.data().empty());
+            EXPECT_EQ(result.shape(), a.shape());
+        }
+
+        TEST(CpuOpsTest, AddParallelRejectsZeroThreads) {
+            const Tensor a(TensorShape({1}), {1.0F});
+            const Tensor b(TensorShape({1}), {2.0F});
+
+            EXPECT_THROW(add_parallel(a, b, 0), std::invalid_argument);
+        }
+
+        TEST(CpuOpsTest, AddParallelRejectsZeroThreadsForEmptyTensors) {
+            const Tensor a(TensorShape({0}));
+            const Tensor b(TensorShape({0}));
+
+            EXPECT_THROW(add_parallel(a, b, 0), std::invalid_argument);
+        }
+
+        TEST(CpuOpsTest, AddParallelRejectsDifferentShapesWithSameElementCount) {
+            const Tensor a(TensorShape({1, 2}));
+            const Tensor b(TensorShape({2, 1}));
+
+            EXPECT_THROW(add_parallel(a, b, 2), std::invalid_argument);
+        }
+
+        TEST(CpuOpsTest, AddParallelHandlesScalarsWithoutModifyingInputs) {
+            const Tensor a(TensorShape({}), {-2.0F});
+            const Tensor b(TensorShape({}), {5.0F});
+
+            const Tensor result = add_parallel(a, b, 2);
+
+            EXPECT_EQ(result.shape(), TensorShape({}));
+            EXPECT_EQ(result.data(), std::vector<float>({3.0F}));
+            EXPECT_EQ(a.data(), std::vector<float>({-2.0F}));
+            EXPECT_EQ(b.data(), std::vector<float>({5.0F}));
         }
 
 
